@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#14101f">
+<title>PIXORA</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500&family=Poppins:wght@600&family=Pacifico&family=Bebas+Neue&family=Playfair+Display:wght@700&family=Amiri:wght@700&family=Noto+Nastaliq+Urdu:wght@600&family=Hind:wght@600&family=Caveat:wght@700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#14101f;--card:#211a33;--line:#3a3054;--ink:#f3eefc;--mute:#a79cc2;--acc:#a78bfa}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:'DM Sans',system-ui,sans-serif}
+body{padding:env(safe-area-inset-top) 12px calc(16px + env(safe-area-inset-bottom));max-width:560px;margin:0 auto}
+h1{font:600 22px 'Poppins',sans-serif;margin:14px 0 2px;letter-spacing:.04em}
+.sub{color:var(--mute);font-size:13px;margin:0 0 10px}
+#cv{width:100%;aspect-ratio:1;display:block;border-radius:10px;touch-action:none;background:#fff}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px;margin-top:10px}
+.row{display:flex;gap:8px;align-items:center;margin-top:8px}
+.row:first-child{margin-top:0}
+button,select,textarea,input[type=color]{font:500 14px 'DM Sans',sans-serif;border-radius:8px;border:1px solid var(--line);background:#2b2342;color:var(--ink)}
+button{padding:11px 12px;flex:1}
+button.main{background:var(--acc);color:#14101f;border-color:var(--acc)}
+button.del{color:#ff9aa8}
+textarea{width:100%;padding:10px;min-height:54px;resize:none}
+select{flex:1;padding:10px}
+input[type=color]{width:46px;height:40px;padding:2px}
+input[type=range]{flex:1;accent-color:var(--acc)}
+label{font-size:12px;color:var(--mute);min-width:52px}
+#hint{font-size:12px;color:var(--mute);margin:8px 2px 0}
+</style>
+</head>
+<body>
+<h1>PIXORA</h1>
+<p class="sub">Photo par text likho, design banao</p>
+<canvas id="cv" width="1080" height="1080"></canvas>
+<p id="hint">Text ya photo ko ungli se pakad kar khiskao.</p>
+
+<div class="panel">
+  <div class="row">
+    <button id="addImg">Photo jodo</button>
+    <label style="min-width:0">Background</label>
+    <input type="color" id="bg" value="#ffffff">
+  </div>
+</div>
+
+<div class="panel">
+  <textarea id="txt" placeholder="Yahan text likho"></textarea>
+  <div class="row"><button class="main" id="addTxt">Text jodo</button></div>
+  <div class="row">
+    <select id="font">
+      <option value="Poppins">Poppins</option>
+      <option value="Pacifico">Pacifico</option>
+      <option value="Bebas Neue">Bebas Neue</option>
+      <option value="Playfair Display">Playfair</option>
+      <option value="Caveat">Caveat</option>
+      <option value="Hind">Hindi (Hind)</option>
+      <option value="Amiri">Urdu (Amiri)</option>
+      <option value="Noto Nastaliq Urdu">Urdu Nastaliq</option>
+    </select>
+    <input type="color" id="col" value="#231e2d">
+  </div>
+  <div class="row"><label>Size</label><input type="range" id="size" min="20" max="300" value="90"></div>
+  <div class="row"><label>Ghumao</label><input type="range" id="rot" min="-180" max="180" value="0"></div>
+</div>
+
+<div class="panel">
+  <div class="row">
+    <button class="del" id="del">Hatao</button>
+    <button class="main" id="save">Save karo (PNG)</button>
+  </div>
+</div>
+
+<input type="file" id="file" accept="image/*" hidden>
+
+<script>
+var cv=document.getElementById('cv'),cx=cv.getContext('2d'),W=1080,H=1080;
+var objs=[],sel=null,drag=false,ox=0,oy=0,bg='#ffffff';
+var $=function(i){return document.getElementById(i)};
+
+function lines(o){return o.text.split('\n')}
+function bounds(o){
+  if(o.t==='img')return{w:o.w*o.s,h:o.h*o.s};
+  cx.font=o.size+'px "'+o.font+'"';
+  var l=lines(o),w=0;
+  l.forEach(function(s){w=Math.max(w,cx.measureText(s).width)});
+  return{w:w,h:l.length*o.size*1.25};
+}
+function draw(showBox){
+  cx.fillStyle=bg;cx.fillRect(0,0,W,H);
+  objs.forEach(function(o){
+    cx.save();cx.translate(o.x,o.y);cx.rotate(o.r*Math.PI/180);
+    var b=bounds(o);
+    if(o.t==='img'){cx.drawImage(o.img,-b.w/2,-b.h/2,b.w,b.h)}
+    else{
+      cx.font=o.size+'px "'+o.font+'"';cx.fillStyle=o.color;
+      cx.textAlign='center';cx.textBaseline='middle';
+      var l=lines(o),lh=o.size*1.25,y0=-(l.length-1)*lh/2;
+      l.forEach(function(s,i){cx.fillText(s,0,y0+i*lh)});
+    }
+    if(showBox&&o===sel){
+      cx.strokeStyle='#7c3aed';cx.lineWidth=4;cx.setLineDash([14,10]);
+      cx.strokeRect(-b.w/2-12,-b.h/2-12,b.w+24,b.h+24);
+    }
+    cx.restore();
+  });
+}
+function render(){draw(true)}
+
+function pos(e){
+  var r=cv.getBoundingClientRect();
+  return{x:(e.clientX-r.left)*W/r.width,y:(e.clientY-r.top)*H/r.height};
+}
+function hit(p){
+  for(var i=objs.length-1;i>=0;i--){
+    var o=objs[i],b=bounds(o),a=-o.r*Math.PI/180;
+    var dx=p.x-o.x,dy=p.y-o.y;
+    var lx=dx*Math.cos(a)-dy*Math.sin(a),ly=dx*Math.sin(a)+dy*Math.cos(a);
+    if(Math.abs(lx)<=b.w/2+20&&Math.abs(ly)<=b.h/2+20)return o;
+  }
+  return null;
+}
+function syncUI(){
+  if(!sel)return;
+  if(sel.t==='text'){$('txt').value=sel.text;$('font').value=sel.font;$('col').value=sel.color;$('size').value=sel.size}
+  else{$('size').value=Math.round(sel.s*100)}
+  $('rot').value=sel.r;
+}
+cv.addEventListener('pointerdown',function(e){
+  var p=pos(e);sel=hit(p);
+  if(sel){drag=true;ox=p.x-sel.x;oy=p.y-sel.y;cv.setPointerCapture(e.pointerId);syncUI()}
+  render();
+});
+cv.addEventListener('pointermove',function(e){
+  if(!drag||!sel)return;
+  var p=pos(e);sel.x=p.x-ox;sel.y=p.y-oy;render();
+});
+cv.addEventListener('pointerup',function(){drag=false});
+
+function addText(){
+  var v=$('txt').value.trim();
+  if(!v){$('hint').textContent='Pehle upar box mein text likho.';return}
+  var o={t:'text',text:v,x:W/2,y:H/2,size:+$('size').value,color:$('col').value,font:$('font').value,r:+$('rot').value};
+  document.fonts.load('40px "'+o.font+'"',v).then(function(){objs.push(o);sel=o;render()});
+  $('hint').textContent='Text ko ungli se khiskao.';
+}
+$('addTxt').onclick=addText;
+$('addImg').onclick=function(){$('file').click()};
+$('file').onchange=function(e){
+  var f=e.target.files[0];if(!f)return;
+  var img=new Image();
+  img.onload=function(){
+    var k=Math.min(W*.8/img.width,H*.8/img.height);
+    var o={t:'img',img:img,x:W/2,y:H/2,w:img.width*k,h:img.height*k,s:1,r:0};
+    objs.unshift(o);sel=o;$('size').value=100;$('rot').value=0;render();
+  };
+  img.onerror=function(){$('hint').textContent='Ye photo khul nahi payi.'};
+  img.src=URL.createObjectURL(f);e.target.value='';
+};
+function upd(fn){if(!sel)return;fn(sel);render()}
+$('txt').oninput=function(){if(sel&&sel.t==='text'&&this.value.trim())upd(function(o){o.text=$('txt').value})};
+$('font').onchange=function(){var f=this.value;document.fonts.load('40px "'+f+'"').then(function(){upd(function(o){if(o.t==='text')o.font=f})})};
+$('col').oninput=function(){var c=this.value;upd(function(o){if(o.t==='text')o.color=c})};
+$('size').oninput=function(){var v=+this.value;upd(function(o){if(o.t==='text')o.size=v;else o.s=v/100})};
+$('rot').oninput=function(){var v=+this.value;upd(function(o){o.r=v})};
+$('bg').oninput=function(){bg=this.value;render()};
+$('del').onclick=function(){
+  if(!sel){$('hint').textContent='Pehle kisi text ya photo par tap karo.';return}
+  objs.splice(objs.indexOf(sel),1);sel=null;render();
+};
+$('save').onclick=function(){
+  draw(false);
+  cv.toBlob(function(b){
+    var a=document.createElement('a');
+    a.href=URL.createObjectURL(b);a.download='PIXORA_'+Date.now()+'.png';
+    document.body.appendChild(a);a.click();a.remove();render();
+    $('hint').textContent='Save ho gaya. Downloads ya Gallery mein dekho.';
+  },'image/png');
+};
+document.fonts.ready.then(render);
+render();
+</script>
+</body>
+</html>
